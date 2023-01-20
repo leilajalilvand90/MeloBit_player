@@ -5,8 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
+import android.os.Handler;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -14,7 +14,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.myapplication.R;
 
-import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import melo_beat.models.SongInfo.Result;
 import melo_beat.models.SongInfo.SongInfo;
@@ -31,8 +31,10 @@ public class SongActivity extends AppCompatActivity {
     TextView artists;
     TextView downloads;
     TextView lyric;
-    Button button;
-    MediaPlayer mediaPlayer = new MediaPlayer();
+    ImageButton playButton;
+    ImageButton forwardButton;
+    ImageButton backwardButton;
+    MediaPlayer mediaPlayer;
 
 
     @Override
@@ -45,7 +47,9 @@ public class SongActivity extends AppCompatActivity {
         title = findViewById(R.id.textView12);
         artists = findViewById(R.id.textView13);
         downloads = findViewById(R.id.textView14);
-        button = findViewById(R.id.button);
+        playButton = findViewById(R.id.imageButton2);
+        forwardButton = findViewById(R.id.imageButton3);
+        backwardButton = findViewById(R.id.imageButton);
         lyric = findViewById(R.id.textView15);
 
         String songID = getIntent().getStringExtra("SongID");
@@ -65,11 +69,52 @@ public class SongActivity extends AppCompatActivity {
                 artists.setText(song.getArtists().get(0).getFullName());
                 downloads.setText(song.getDownloadCount());
 
-                button.setOnClickListener(v -> {
-                    mediaPlayer = MediaPlayer.create(SongActivity.this, Uri.parse(song.getAudio().getHigh().getUrl()));
-                    mediaPlayer.start();
+                AtomicInteger data = new AtomicInteger(12);
+                playButton.setOnClickListener(v -> {
+
+                    Handler handler = new Handler();
+
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (mediaPlayer == null) {
+                                Glide
+                                        .with(playButton)
+                                        .load(R.drawable.pause_button)
+                                        .into(playButton);
+                                mediaPlayer = MediaPlayer.create(SongActivity.this, Uri.parse(song.getAudio().getHigh().getUrl()));
+                                mediaPlayer.start();
+
+                            } else {
+                                if (mediaPlayer.isPlaying()) {
+                                    mediaPlayer.pause();
+                                    data.set(mediaPlayer.getCurrentPosition());
+                                    Glide
+                                            .with(playButton)
+                                            .load(R.drawable.play_button)
+                                            .into(playButton);
+                                } else {
+                                    Glide
+                                            .with(playButton)
+                                            .load(R.drawable.pause_button)
+                                            .into(playButton);
+                                    mediaPlayer.start();
+                                    mediaPlayer.seekTo(data.get());
+                                }
+                            }
+                        }
+                    });
+
                 });
 
+
+                forwardButton.setOnClickListener(it -> {
+                    mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 5000);
+                });
+
+                backwardButton.setOnClickListener(it -> {
+                    mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 5000);
+                });
                 lyric.setText(song.getLyrics());
 
             }
@@ -86,6 +131,8 @@ public class SongActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mediaPlayer.release();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+        }
     }
 }
